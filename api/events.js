@@ -1,8 +1,13 @@
+
 export default (req, res) => {
-  res.status(200).json({
-    status: "live",
+  res.json({
+    status: "success",
+    region: "IND",
     events: [
-      { id: 1, name: "Test Event" }
+      {
+        title: "TEST EVENT 1",
+        banner: "https://i.imgur.com/6Q9Z8Zl.png" // Sample image
+      }
     ]
   });
 };
