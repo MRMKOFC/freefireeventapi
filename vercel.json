@@ -2,18 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "app.py",
+      "src": "event.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/events",
-      "dest": "/app.py"
+      "dest": "/event.py"
     },
     {
       "src": "/",
-      "dest": "/app.py"
+      "dest": "/event.py"
     }
   ]
 }
