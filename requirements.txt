@@ -1,4 +1,5 @@
-Flask
-beautifulsoup4
+flask
+flask-cors
 requests
-gunicorn
+beautifulsoup4
+lxml
