@@ -64,7 +64,7 @@ def get_events():
         })
 
     response_data = {
-        "credit": "@PikaApis",
+        "credit": "@MK",
         "region": region,
         "events": events
     }
