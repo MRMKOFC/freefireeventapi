@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+rom flask import Flask, request, jsonify, Response
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -73,5 +73,5 @@ def get_events():
 
     return Response(response_json, content_type='application/json; charset=utf-8')
 
-if __name__ =Check out upcoming banners background at ig mrmkofc already posted= '__main__':
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
