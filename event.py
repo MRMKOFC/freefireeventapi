@@ -1,29 +1,27 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
-import json
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS
+CORS(app)
 
 ALLOWED_REGIONS = ["ID", "IND", "NA", "PK", "BR", "ME", "SG", "BD", "TW", "TH", "VN", "CIS", "EU", "SAC", "IND-HN"]
 
-# Cache to store API responses (reduces repeated requests)
 CACHE = {}
-CACHE_EXPIRY = timedelta(minutes=10)  # Cache data for 10 minutes
+CACHE_EXPIRY = timedelta(minutes=10)
 
 def fetch_events(region):
     url = f"https://freefireleaks.vercel.app/events/{region}"
-
+    
     try:
-        response = requests.get(url, timeout=5, verify=False)  # Set timeout to 5 seconds
-        response.raise_for_status()  # Raise error if request fails
+        response = requests.get(url, timeout=5, verify=False)
+        response.raise_for_status()
     except requests.RequestException as e:
         return {"error": f"Failed to fetch events: {str(e)}"}, 500
 
-    soup = BeautifulSoup(response.text, 'lxml')  # Faster parsing with lxml
+    soup = BeautifulSoup(response.text, 'lxml')
     elements = soup.find_all('div', class_='poster')
 
     events = []
@@ -63,31 +61,25 @@ def fetch_events(region):
         "events": events
     }
 
-@app.route('/')
-def index():
-    return "Welcome to the optimized Free Fire events API. Use /events?region=IND to get events."
-
-@app.route('/events', methods=['GET'])
+@app.route('/api/events', methods=['GET'])
 def get_events():
     region = request.args.get('region', 'IND').upper()
 
     if region not in ALLOWED_REGIONS:
-        return jsonify({"error": f"Invalid region. Allowed regions: {', '.join(ALLOWED_REGIONS)}"}), 400
+        return jsonify({"error": f"Invalid region. Allowed: {', '.join(ALLOWED_REGIONS)}"}), 400
 
-    # Check if cached data is available
     if region in CACHE and datetime.now() - CACHE[region]["time"] < CACHE_EXPIRY:
         return jsonify(CACHE[region]["data"])
 
-    # Fetch new data
     response_data = fetch_events(region)
     
-    if isinstance(response_data, tuple):  # If fetch_events returned an error
+    if isinstance(response_data, tuple):
         return jsonify(response_data[0]), response_data[1]
 
-    # Store in cache
     CACHE[region] = {"data": response_data, "time": datetime.now()}
 
     return jsonify(response_data)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+# Vercel requires this handler
+def handler(request, *args, **kwargs):
+    return app(request.environ, start_response)
