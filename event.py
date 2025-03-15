@@ -21,7 +21,7 @@ def get_events():
     if region not in ALLOWED_REGIONS:
         return jsonify({"error": f"Invalid region. Allowed regions: {', '.join(ALLOWED_REGIONS)}"}), 400
 
-    url = f"https://freefireleaks.vercel.app/events/{region}"
+    url = f"https://freefireleaks.vercel.app/events"
     
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
