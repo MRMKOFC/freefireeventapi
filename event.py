@@ -3,32 +3,45 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from flask_cors import CORS
+import time
 
 app = Flask(__name__)
 CORS(app)
 
 BASE_URL = "https://xv.ct.ws/event/"
 
+# --- Simple cache for regions (refresh every 1 hour) ---
+_cached_regions = []
+_last_fetch_time = 0
+
 def fetch_regions():
-    """Scrape the base event page to get available region codes dynamically."""
+    global _cached_regions, _last_fetch_time
+    now = time.time()
+
+    if _cached_regions and (now - _last_fetch_time < 3600):
+        return _cached_regions
+
     try:
         response = requests.get(BASE_URL, timeout=10, headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
         })
         response.raise_for_status()
     except requests.exceptions.RequestException:
-        return []
+        return _cached_regions
 
     soup = BeautifulSoup(response.text, "html.parser")
-
-    # Buttons contain region codes
     buttons = soup.find_all("button")
     regions = [btn.get_text(strip=True).upper() for btn in buttons if btn.get_text(strip=True)]
+
+    _cached_regions = regions
+    _last_fetch_time = now
     return regions
+
 
 @app.route('/')
 def index():
-    return "Welcome to the events API. Use /events to get events or /regions to list available regions."
+    return "Welcome to the events API. Use /regions to get available regions and /events?region=IND to get events."
+
 
 @app.route('/regions', methods=['GET'])
 def get_regions():
@@ -37,11 +50,11 @@ def get_regions():
         return jsonify({"error": "Failed to fetch regions"}), 500
     return jsonify({"regions": regions})
 
+
 @app.route('/events', methods=['GET'])
 def get_events():
     region = request.args.get('region', 'IND').upper()
 
-    # Fetch dynamic regions
     regions = fetch_regions()
     if not regions:
         return jsonify({"error": "Failed to fetch regions"}), 500
@@ -49,7 +62,6 @@ def get_events():
     if region not in regions:
         return jsonify({"error": f"Invalid region. Allowed regions: {', '.join(regions)}"}), 400
 
-    # Region-specific page
     url = f"{BASE_URL}?region={region}"
 
     try:
@@ -104,6 +116,7 @@ def get_events():
     }
 
     return jsonify(response_data)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
