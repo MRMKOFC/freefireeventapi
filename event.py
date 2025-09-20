@@ -1,35 +1,62 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-import json
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS
+CORS(app)
 
-ALLOWED_REGIONS = ["ID", "IND", "NA", "PK", "BR", "ME", "SG", "BD", "TW", "TH", "VN", "CIS", "EU", "SAC", "IND-HN"]
+BASE_URL = "https://xv.ct.ws/event/"
+
+def fetch_regions():
+    """Scrape the base event page to get available region codes dynamically."""
+    try:
+        response = requests.get(BASE_URL, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        })
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        return []
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # Buttons contain region codes
+    buttons = soup.find_all("button")
+    regions = [btn.get_text(strip=True).upper() for btn in buttons if btn.get_text(strip=True)]
+    return regions
 
 @app.route('/')
 def index():
-    return "Welcome to the events API. Use /events to get events."
+    return "Welcome to the events API. Use /events to get events or /regions to list available regions."
+
+@app.route('/regions', methods=['GET'])
+def get_regions():
+    regions = fetch_regions()
+    if not regions:
+        return jsonify({"error": "Failed to fetch regions"}), 500
+    return jsonify({"regions": regions})
 
 @app.route('/events', methods=['GET'])
 def get_events():
     region = request.args.get('region', 'IND').upper()
 
-    if region not in ALLOWED_REGIONS:
-        return jsonify({"error": f"Invalid region. Allowed regions: {', '.join(ALLOWED_REGIONS)}"}), 400
+    # Fetch dynamic regions
+    regions = fetch_regions()
+    if not regions:
+        return jsonify({"error": "Failed to fetch regions"}), 500
 
-    url = f"https://freefireleaks.vercel.app/events{region}"
-    
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-    }
+    if region not in regions:
+        return jsonify({"error": f"Invalid region. Allowed regions: {', '.join(regions)}"}), 400
+
+    # Region-specific page
+    url = f"{BASE_URL}?region={region}"
 
     try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise error if request fails
+        response = requests.get(url, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        })
+        response.raise_for_status()
     except requests.exceptions.RequestException as e:
         return jsonify({"error": "Failed to fetch data", "details": str(e)}), 500
 
@@ -44,7 +71,7 @@ def get_events():
         data_end = element.get('data-end')
 
         if not data_start or not data_end:
-            continue  # Skip missing elements
+            continue
 
         data_start = int(data_start)
         data_end = int(data_end)
